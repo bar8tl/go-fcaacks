@@ -1,0 +1,18 @@
+{
+  "program": {
+    "ackDir" : "\\\\bosch.com\\dfsrb\\DfsUS\\loc\\Mx\\ILM\\Projects\\CFA\\Edifcack\\",
+    "ackType": ".txt",
+    "xmlDir" : "c:\\fcaacks\\files\\",
+    "xmlType": ".xml",
+    "dbDir"  : "c:\\fcaacks\\",
+    "dbName" : "fcaacks.db"
+  },
+  "run": [
+    {
+      "option"   : "rep",
+      "rptFilter": "current",
+      "filtPrm1" : "year",
+      "filtPrm2" : "na"
+    }
+  ]
+}

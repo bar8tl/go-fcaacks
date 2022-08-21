@@ -1,0 +1,14 @@
+{
+  "dflt": {
+    "CNNS_SQLIT3"  : "file:@?file:locked.sqlite?cache=shared&mode=rwc",
+    "ACKS_DIR"     : "\\\\bosch.com\\dfsrb\\DfsUS\\loc\\Mx\\ILM\\Projects\\CFA\\Edifcack\\",
+    "ACKS_TYPE"    : ".txt",
+    "XML_DIR"      : "files\\",
+    "XML_TYPE"     : ".xml",
+    "DB_DIR"       : ".\\",
+    "DB_NAME"      : "fcaacks.db",
+    "REPORT_FILTER": "current",
+    "FILTER_PARM1" : "year",
+    "FILTER_PARM2" : "na"
+  }
+}
