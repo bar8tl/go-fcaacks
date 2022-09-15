@@ -1,9 +1,13 @@
-// report.go [2017-05-24 BAR8TL]
-// Maintains local acks DB and geneates an excel output report
+// report.go - Maintains local acks DB and geneates an excel output report
+// [2017-05-24 BAR8TL]
+// [2022-09-14 BAR8TL CRQ001:Replace sqlite pkg go1 by mattn
+
 package fcaacks
 
 import lib "bar8tl/p/rblib"
-import "code.google.com/p/go-sqlite/go1/sqlite3"
+// import "code.google.com/p/go-sqlite/go1/sqlite3" [CRQ001:remove]
+import "database/sql"                  // [CRQ001:add]
+import _ "github.com/mattn/go-sqlite3" // [CRQ001:add]
 import "encoding/xml"
 import "fmt"
 import "github.com/tealeg/xlsx"
@@ -52,7 +56,8 @@ var TICK = func() {
 
 type Drep_tp struct {
   cnnst string
-  db    *sqlite3.Conn
+// db    *sql.Conn [CRQ001:remove]
+  db    *sql.DB // [CRQ001:add]
 }
 
 func NewDrep() *Drep_tp {
@@ -62,11 +67,13 @@ func NewDrep() *Drep_tp {
 
 func (d *Drep_tp) CrtReport(parm lib.Param_tp, s Settings_tp) *Drep_tp {
   s.SetRunVars(parm)
-  d.cnnst = s.Cnnst
+// d.cnnst = s.Cnnst [CRQ001:remove]
+  d.cnnst = s.Dbodr+s.Dbonm // [CRQ001:add]
   var err error
   fmt.Print("Browsing FCA XML acknowledgments")
   RESET_TICKS()
-  d.db, err = sqlite3.Open(d.cnnst)
+// d.db, err := sqlite3.Open(d.cnnst) [CRQ001:remove]
+  d.db, err = sql.Open("sqlite3", d.cnnst) // [CRQ001:add]
   if err != nil {
     log.Fatalf("Open SQLite database error: %v\n", err)
   }
@@ -129,7 +136,8 @@ func (d *Drep_tp) isrAcks(file string, ifile int, a *Acknw) {
   if len(a.Errds) == 1 {
     err1 = a.Errds[0]
   }
-  args := sqlite3.NamedArgs{
+/* [CRQ001:remove]
+  args := sql.Named{
     ":01": ifile,
     ":02": a.Route.Issue,
     ":03": a.Route.Rceiv,
@@ -146,6 +154,13 @@ func (d *Drep_tp) isrAcks(file string, ifile int, a *Acknw) {
   err := d.db.Exec(
     `insert into acks values(:01,:02,:03,:04,:05,:06,:07,:08,:09,:10,:11,:12)`,
     args)
+*/
+// [CRQ001:add]
+  _, err := d.db.Exec(
+    `insert into acks values(?,?,?,?,?,?,?,?,?,?,?,?)`, ifile,
+      a.Route.Issue, a.Route.Rceiv, a.Docum.Invoi, a.Docum.Serie,
+      a.Docum.Folio, a.Docum.Uuid,  a.Recei.Dtime, a.Recei.Stats,
+      err1, err2, notes)
   if err != nil {
     log.Fatalf("Insert %s sql table error: %v\n", file, err)
   }
@@ -154,10 +169,22 @@ func (d *Drep_tp) isrAcks(file string, ifile int, a *Acknw) {
 func (d *Drep_tp) noteCorrections() {
   var err error
   var ackno, serie, folio, stats, rackn string
-  var rdb, sdb *sqlite3.Stmt
+//  var rdb, sdb *sqlite3.Stmt [CRQ002:remove]
+  var rdb, sdb *sql.Rows // [CRQ001:add]
+/* [CRQ001:remove]
   for rdb, err = d.db.Query(
     `select ackno,serie,folio,stats from acks where stats<>"00"
     order by ackno;`); err == nil; err = rdb.Next() {
+*/
+/* [CRQ001:add] */
+  rdb, err = d.db.Query(
+   `select ackno,serie,folio,stats from acks where stats<>"00" order by ackno;`)
+  if err != nil {
+    rdb.Close()
+    return
+  }
+  for eot := false; !eot; eot = rdb.Next() {
+/**/
     rdb.Scan(&ackno, &serie, &folio, &stats)
     sdb, err = d.db.Query(
       `select ackno from acks where stats="00" and serie=? and folio=? and
@@ -194,7 +221,7 @@ func (d *Drep_tp) listAcks(s Settings_tp) {
   c.style[0].Font.Bold = true
   c.style[1] = xlsx.NewStyle()
   c.style[1].Font = *xlsx.NewFont(10, "Arial")
-  c.sheet = c.ofile.AddSheet("Sheet1")
+  c.sheet, _ = c.ofile.AddSheet("Sheet1")
   column := []layout{
     {"ackno", 10.29, "ack#"},
     {"issue", 11.30, "remitente"},
@@ -223,9 +250,20 @@ func (d *Drep_tp) listAcks(s Settings_tp) {
   var f [12]string
   var wdate time.Time
   var err error
-  var cmd *sqlite3.Stmt
+//  var cmd *sqlite3.Stmt [CRQ001:remove]
+  var cmd *sql.Rows // [CRQ001:add]
+/* [CRQ001:remove]
   for cmd, err = d.db.Query(
     `select * from acks order by dtime, ackno;`); err == nil; err = cmd.Next() {
+*/
+/* [CRQ001:add */
+  cmd, err = d.db.Query(`select * from acks order by dtime, ackno;`)
+  if err != nil {
+    cmd.Close()
+    return
+  }
+  for eot := false; !eot; eot = cmd.Next() {
+/**/
     cmd.Scan(&f[0], &f[1], &f[2], &f[3], &f[4], &f[5], &f[6], &f[7], &f[8],
       &f[9], &f[10], &f[11])
     ws := f[7]
